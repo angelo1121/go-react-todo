@@ -18,7 +18,7 @@ type Todo struct {
 func main() {
 	app := fiber.New()
 
-	if err := godotenv.Load('.env'); err != nil {
+	if err := godotenv.Load(".env"); err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
@@ -70,7 +70,7 @@ func main() {
 		return c.Status(404).JSON(fiber.Map{"error": "Todo not found."})
 	})
 
-	log.Fatal(app.Listen(":"+os.Getenv("SERVER_PORT")))
+	log.Fatal(app.Listen(":" + os.Getenv("SERVER_PORT")))
 }
 
 // RemoveIndex removes the element at index i from a slice while maintaining order.

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useToast, ToastId, UseToastOptions } from '@chakra-ui/react';
 
 interface ToastContextProps {
-  addToast: (title: string, status: UseToastOptions['status'], options?: UseToastOptions) => void;
+  addToast: (title: string, status: UseToastOptions['status'], options?: UseToastOptions) => ToastId;
 }
 
 const ToastContext = createContext<ToastContextProps | undefined>(undefined);
@@ -15,23 +15,30 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const toast = useToast();
   const [toastQueue, setToastQueue] = useState<ToastId[]>([]);
 
-  const addToast = (title: string, status: UseToastOptions['status'], options?: UseToastOptions) => {
+  const addToast = (title: string, status: UseToastOptions['status'], options?: UseToastOptions): ToastId => {
     if (toastQueue.length >= 3) {
       const [firstToastId, ...rest] = toastQueue;
       toast.close(firstToastId);
       setToastQueue(rest);
     }
 
-    const id = toast({
+    let toastOptions: UseToastOptions = {
       title,
       status,
       duration: 5000,
       isClosable: true,
       position: 'bottom-left',
-      ...options
-    });
+    }
+
+    if (options) {
+      toastOptions = { ...toastOptions, ...options }
+    }
+
+    const id = toast(toastOptions);
 
     setToastQueue((prevQueue) => [...prevQueue, id]);
+
+    return id;
   };
 
   return (

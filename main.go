@@ -19,6 +19,7 @@ type Todo struct {
 	ID        uint   `json:"id" gorm:"primarykey"`
 	Body      string `json:"body"`
 	Completed bool   `json:"completed"`
+	Order     uint   `json:"order"`
 	// gorm.Model
 }
 
@@ -37,7 +38,7 @@ func GetTodos(c *fiber.Ctx) error {
 	time.Sleep(time.Millisecond * 200)
 	// return c.Status(404).JSON(fiber.Map{"error": "Todos not found"})
 	var todos []Todo
-	DB.Find(&todos)
+	DB.Order("`order`").Find(&todos)
 	return c.Status(fiber.StatusOK).JSON(todos)
 }
 
@@ -94,6 +95,26 @@ func DeleteTodo(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"success": true})
 }
 
+func UpdateTodosOrder(c *fiber.Ctx) error {
+	time.Sleep(time.Millisecond * 1000)
+
+	// return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to update"})
+
+	var input []struct {
+		ID uint `json:"id"`
+	}
+
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err})
+	}
+
+	for i, v := range input {
+		DB.Model(&Todo{}).Where("id = ?", v.ID).Update("order", i+1)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"success": true})
+}
+
 func main() {
 	if err := godotenv.Load(".env"); err != nil {
 		log.Fatal("Error loading .env file")
@@ -113,6 +134,7 @@ func main() {
 	app.Post("/api/todos", CreateTodo)
 	app.Patch("/api/todos/:id", UpdateTodo)
 	app.Delete("/api/todos/:id", DeleteTodo)
+	app.Put("/api/todos/order", UpdateTodosOrder)
 
 	log.Fatal(app.Listen(":" + os.Getenv("SERVER_PORT")))
 }

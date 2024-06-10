@@ -7,6 +7,12 @@ import { BASE_URL } from "../App";
 import { IoMdUndo } from "react-icons/io";
 import { useToastContext } from "../providers/ToastProvider";
 
+interface CustomTodoItemProps {
+  todo: Todo;
+  removeTodo: any;
+  editTodo: any;
+}
+
 const updateTodoService = async (todo: Todo) => {
   const res = await fetch(BASE_URL + `/todos/${todo.id}`, {
     method: "PATCH",
@@ -35,7 +41,7 @@ const deleteTodoService = async (todo: Todo) => {
   return data;
 }
 
-const TodoItem = ({ todo, removeTodo, editTodo }: { todo: Todo, removeTodo: any, editTodo: any }) => {
+const TodoItem = ({ todo, removeTodo, editTodo }: CustomTodoItemProps) => {
   // const queryClient = useQueryClient();
   // const toast = useToast();
   const { addToast } = useToastContext()
@@ -64,7 +70,7 @@ const TodoItem = ({ todo, removeTodo, editTodo }: { todo: Todo, removeTodo: any,
     onSuccess: () => {
       removeTodo(todo.id)
       // queryClient.invalidateQueries({ queryKey: ["todos"] });
-      addToast('Todo deleted', 'success',  {
+      addToast('Todo deleted', 'success', {
         description: todo.body,
       })
     },
@@ -77,7 +83,11 @@ const TodoItem = ({ todo, removeTodo, editTodo }: { todo: Todo, removeTodo: any,
   });
 
   return (
-    <Flex gap={2} alignItems={"center"}>
+    <Flex
+      gap={2}
+      alignItems={"center"}
+      width={"100%"}
+    >
       <Flex
         flex={1}
         alignItems={"center"}

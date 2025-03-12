@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 	"os"
+	"slices"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -35,15 +35,12 @@ func ConnectDB() {
 }
 
 func GetTodos(c *fiber.Ctx) error {
-	time.Sleep(time.Millisecond * 200)
-	// return c.Status(404).JSON(fiber.Map{"error": "Todos not found"})
 	var todos []Todo
 	DB.Order("`order`").Find(&todos)
 	return c.Status(fiber.StatusOK).JSON(todos)
 }
 
 func CreateTodo(c *fiber.Ctx) error {
-	time.Sleep(time.Millisecond * 150)
 	var todo Todo
 	if err := c.BodyParser(&todo); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err})
@@ -59,11 +56,10 @@ func CreateTodo(c *fiber.Ctx) error {
 }
 
 func UpdateTodo(c *fiber.Ctx) error {
-	time.Sleep(time.Millisecond * 150)
 	id := c.Params("id")
 
 	var todo Todo
-	if err := DB.Where("id = ?", id).First(&todo).Error; err != nil {
+	if err := DB.First(&todo, id).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Todo not found."})
 	}
 
@@ -80,11 +76,10 @@ func UpdateTodo(c *fiber.Ctx) error {
 }
 
 func DeleteTodo(c *fiber.Ctx) error {
-	time.Sleep(time.Millisecond * 150)
 	id := c.Params("id")
 
 	var todo Todo
-	if err := DB.Where("id = ?", id).First(&todo).Error; err != nil {
+	if err := DB.First(&todo, id).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Todo not found."})
 	}
 
@@ -96,10 +91,6 @@ func DeleteTodo(c *fiber.Ctx) error {
 }
 
 func UpdateTodosOrder(c *fiber.Ctx) error {
-	time.Sleep(time.Millisecond * 1000)
-
-	// return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to update"})
-
 	var input []struct {
 		ID uint `json:"id"`
 	}
@@ -108,8 +99,16 @@ func UpdateTodosOrder(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err})
 	}
 
-	for i, v := range input {
-		DB.Model(&Todo{}).Where("id = ?", v.ID).Update("order", i+1)
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		for i, v := range input {
+			if err := tx.Model(&Todo{}).Where("id = ?", v.ID).Update("order", i+1).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"success": true})
@@ -141,5 +140,5 @@ func main() {
 
 // RemoveIndex removes the element at index i from a slice while maintaining order.
 func RemoveIndex[T any](s []T, i int) []T {
-	return append(s[:i], s[i+1:]...)
+	return slices.Delete(s, i, i+1)
 }

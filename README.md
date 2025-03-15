@@ -1,4 +1,4 @@
-# React-Go Tutorial
+# Go-React TODO
 
 A simple TODO application built with Golang and React.js.
 
@@ -30,8 +30,8 @@ The application supports creating, updating, deleting, and reordering TODO items
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/angelo1121/react-go-tutorial.git
-cd react-go-tutorial
+git clone https://github.com/angelo1121/go-react-todo.git
+cd go-react-todo
 ```
 
 ### 2. Backend Setup

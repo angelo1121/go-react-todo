@@ -1,4 +1,4 @@
-module github.com/angelo1121/react-go-tutorial
+module github.com/angelo1121/go-react-todo
 
 go 1.22.3
 

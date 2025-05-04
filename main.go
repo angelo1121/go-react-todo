@@ -3,10 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	fiberLog "github.com/gofiber/fiber/v2/log"
+
 	"log"
 	"os"
 	"strings"
+
+	fiberLog "github.com/gofiber/fiber/v2/log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"

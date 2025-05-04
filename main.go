@@ -41,7 +41,7 @@ func ConnectDB() {
 func GetTodos(c *fiber.Ctx) error {
 	var todos []Todo
 
-	if err := DB.WithContext(c.Context()).Order("`order`").Find(&todos).Error; err != nil {
+	if err := DB.WithContext(c.UserContext()).Order("`order`").Find(&todos).Error; err != nil {
 		return fmt.Errorf("get todos error: %s", err)
 	}
 
@@ -58,7 +58,7 @@ func CreateTodo(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnprocessableEntity, "Todo body is required.")
 	}
 
-	if err := DB.WithContext(c.Context()).Create(&todo).Error; err != nil {
+	if err := DB.WithContext(c.UserContext()).Create(&todo).Error; err != nil {
 		return fmt.Errorf("store todo error: %w", err)
 	}
 
@@ -69,7 +69,7 @@ func UpdateTodo(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	var todo Todo
-	if err := DB.WithContext(c.Context()).First(&todo, id).Error; err != nil {
+	if err := DB.WithContext(c.UserContext()).First(&todo, id).Error; err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Todo not found.")
 	}
 
@@ -78,7 +78,7 @@ func UpdateTodo(c *fiber.Ctx) error {
 		return fmt.Errorf("parsing input error: %w", err)
 	}
 
-	if err := DB.WithContext(c.Context()).Model(&todo).Updates(input).Error; err != nil {
+	if err := DB.WithContext(c.UserContext()).Model(&todo).Updates(input).Error; err != nil {
 		return fmt.Errorf("update todo error: %w", err)
 	}
 
@@ -89,11 +89,11 @@ func DeleteTodo(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	var todo Todo
-	if err := DB.WithContext(c.Context()).First(&todo, id).Error; err != nil {
+	if err := DB.WithContext(c.UserContext()).First(&todo, id).Error; err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Todo not found.")
 	}
 
-	if err := DB.WithContext(c.Context()).Delete(&todo).Error; err != nil {
+	if err := DB.WithContext(c.UserContext()).Delete(&todo).Error; err != nil {
 		return fmt.Errorf("delete todo error: %w", err)
 	}
 
@@ -110,7 +110,7 @@ func UpdateTodosOrder(c *fiber.Ctx) error {
 	}
 
 	err := DB.
-		WithContext(c.Context()).
+		WithContext(c.UserContext()).
 		Transaction(func(tx *gorm.DB) error {
 			for i, v := range input {
 				if err := tx.Model(&Todo{}).Where("id = ?", v.ID).Update("order", i+1).Error; err != nil {

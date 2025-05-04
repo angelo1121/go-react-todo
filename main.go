@@ -136,10 +136,10 @@ func main() {
 	ConnectDB()
 
 	// Migrate the schema
-	//err := DB.AutoMigrate(&Todo{})
-	//if err != nil {
-	//	log.Fatal(fmt.Errorf("error migrating database: %w", err))
-	//}
+	err := DB.AutoMigrate(&Todo{})
+	if err != nil {
+		log.Fatal(fmt.Errorf("error migrating database: %w", err))
+	}
 
 	// Setup log file
 	f, err := os.OpenFile("fiber.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -147,6 +147,7 @@ func main() {
 		log.Fatal(fmt.Errorf("error opening log file: %w", err))
 	}
 	defer f.Close()
+
 	fiberLog.SetOutput(f)
 
 	app := fiber.New(fiber.Config{

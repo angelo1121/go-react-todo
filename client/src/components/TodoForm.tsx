@@ -1,12 +1,12 @@
 import { Button, Flex, Input, Spinner } from "@chakra-ui/react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import {MutationFunction, useMutation, useQueryClient} from "@tanstack/react-query";
+import React, { useEffect, useRef, useState } from "react";
 import { IoMdAdd, IoMdRefresh } from "react-icons/io";
 import { BASE_URL } from "../App";
 import { Todo } from "./TodoList";
 import { useToastContext } from "../providers/ToastProvider";
 
-const createTodoService = async (newTodo: string) => {
+const createTodoService: MutationFunction<Todo, string> = async (newTodo: string) => {
   const response = await fetch(`${BASE_URL}/todos`, {
     method: 'POST',
     headers: {
@@ -19,7 +19,7 @@ const createTodoService = async (newTodo: string) => {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || 'Something went wrong');
+    throw new Error(data.message || 'Something went wrong');
   }
 
   return data;
@@ -63,7 +63,7 @@ const TodoForm = () => {
     }
   })
 
-  const refresTodos = async () => {
+  const refreshTodos = async () => {
     setIsRefetching(true)
 
     await queryClient.refetchQueries({
@@ -110,7 +110,7 @@ const TodoForm = () => {
           _active={{
             transform: "scale(.97)"
           }}
-          onClick={refresTodos}
+          onClick={refreshTodos}
         >
           <IoMdRefresh size={30} className={`${isRefetching ? 'rotating' : ''}`} />
         </Button>

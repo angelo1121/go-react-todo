@@ -25,7 +25,7 @@ const updateTodoService = async (todo: Todo) => {
   })
   const data = await res.json()
   if (!res.ok) {
-    throw new Error(data.error || "Something weng wrong")
+    throw new Error(data.message || "Something went wrong")
   }
   return data;
 }
@@ -36,7 +36,7 @@ const deleteTodoService = async (todo: Todo) => {
   });
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.error || "Something went wrong");
+    throw new Error(data.message || "Something went wrong");
   }
   return data;
 }
@@ -82,6 +82,11 @@ const TodoItem = ({ todo, removeTodo, editTodo }: CustomTodoItemProps) => {
     }
   });
 
+  const color = useColorModeValue(
+      todo.completed ? 'green.500' : 'yellow.400',
+      todo.completed ? 'green.200' : 'yellow.100'
+  );
+
   return (
     <Flex
       gap={2}
@@ -99,7 +104,7 @@ const TodoItem = ({ todo, removeTodo, editTodo }: CustomTodoItemProps) => {
       >
         <Text
           // color={todo.completed ? "green" : "yellow"}
-          color={todo.completed ? useColorModeValue('green.500', 'green.200') : useColorModeValue('yellow.400', 'yellow.100')}
+          color={color}
           textDecoration={todo.completed ? "line-through" : "none"}
         >
           {todo.body}

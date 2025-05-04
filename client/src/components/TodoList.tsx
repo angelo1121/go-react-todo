@@ -19,7 +19,7 @@ const fetchTodos = async () => {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || 'Something went wrong');
+    throw new Error(data.message || 'Something went wrong');
   }
 
   return data || [];
@@ -36,7 +36,7 @@ const updateTodoOrderService = async (payload: {id: number}[]) => {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || 'Something went wrong');
+    throw new Error(data.message || 'Something went wrong');
   }
 
   return data;
@@ -60,7 +60,7 @@ const TodoList = () => {
         description: error.message,
       });
     }
-  }, [isError]);
+  }, [addToast, error?.message, isError]);
 
   useEffect(() => {
     if (todos) {

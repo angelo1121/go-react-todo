@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	fiberLog "github.com/gofiber/fiber/v2/log"
 	"log"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -28,7 +30,7 @@ func ConnectDB() {
 	database, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 
 	if err != nil {
-		log.Fatal("Failed to connect to database", err)
+		log.Fatal(fmt.Errorf("database connection error: %s", err))
 	}
 
 	DB = database
@@ -36,21 +38,27 @@ func ConnectDB() {
 
 func GetTodos(c *fiber.Ctx) error {
 	var todos []Todo
-	DB.Order("`order`").Find(&todos)
+
+	if err := DB.WithContext(c.Context()).Order("`order`").Find(&todos).Error; err != nil {
+		return fmt.Errorf("get todos error: %s", err)
+	}
+
 	return c.Status(fiber.StatusOK).JSON(todos)
 }
 
 func CreateTodo(c *fiber.Ctx) error {
 	var todo Todo
 	if err := c.BodyParser(&todo); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err})
+		return fmt.Errorf("todo parsing error: %w", err)
 	}
 
 	if strings.TrimSpace(todo.Body) == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Todo body is required."})
+		return fiber.NewError(fiber.StatusUnprocessableEntity, "Todo body is required.")
 	}
 
-	DB.Create(&todo)
+	if err := DB.WithContext(c.Context()).Create(&todo).Error; err != nil {
+		return fmt.Errorf("store todo error: %w", err)
+	}
 
 	return c.Status(fiber.StatusCreated).JSON(todo)
 }
@@ -59,17 +67,17 @@ func UpdateTodo(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	var todo Todo
-	if err := DB.First(&todo, id).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Todo not found."})
+	if err := DB.WithContext(c.Context()).First(&todo, id).Error; err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Todo not found.")
 	}
 
 	var input map[string]any
 	if err := c.BodyParser(&input); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err})
+		return fmt.Errorf("parsing input error: %w", err)
 	}
 
-	if err := DB.Model(&todo).Updates(input).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err})
+	if err := DB.WithContext(c.Context()).Model(&todo).Updates(input).Error; err != nil {
+		return fmt.Errorf("update todo error: %w", err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(todo)
@@ -79,12 +87,12 @@ func DeleteTodo(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	var todo Todo
-	if err := DB.First(&todo, id).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Todo not found."})
+	if err := DB.WithContext(c.Context()).First(&todo, id).Error; err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Todo not found.")
 	}
 
-	if err := DB.Delete(&todo).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err})
+	if err := DB.WithContext(c.Context()).Delete(&todo).Error; err != nil {
+		return fmt.Errorf("delete todo error: %w", err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"success": true})
@@ -96,19 +104,22 @@ func UpdateTodosOrder(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&input); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err})
+		return fmt.Errorf("parsing input error: %w", err)
 	}
 
-	err := DB.Transaction(func(tx *gorm.DB) error {
-		for i, v := range input {
-			if err := tx.Model(&Todo{}).Where("id = ?", v.ID).Update("order", i+1).Error; err != nil {
-				return err
+	err := DB.
+		WithContext(c.Context()).
+		Transaction(func(tx *gorm.DB) error {
+			for i, v := range input {
+				if err := tx.Model(&Todo{}).Where("id = ?", v.ID).Update("order", i+1).Error; err != nil {
+					return fmt.Errorf("update todo error: %w", err)
+				}
 			}
-		}
-		return nil
-	})
+			return nil
+		})
+
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return fmt.Errorf("update todos order error: %w", err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"success": true})
@@ -116,16 +127,46 @@ func UpdateTodosOrder(c *fiber.Ctx) error {
 
 func main() {
 	if err := godotenv.Load(".env"); err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal(fmt.Errorf("error loading .env file: %w", err))
 	}
 
 	// Connect to the database
 	ConnectDB()
 
 	// Migrate the schema
-	DB.AutoMigrate(&Todo{})
+	//err := DB.AutoMigrate(&Todo{})
+	//if err != nil {
+	//	log.Fatal(fmt.Errorf("error migrating database: %w", err))
+	//}
 
-	app := fiber.New()
+	// Setup log file
+	f, err := os.OpenFile("fiber.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatal(fmt.Errorf("error opening log file: %w", err))
+	}
+	defer f.Close()
+	fiberLog.SetOutput(f)
+
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+			message := "Internal server error"
+
+			var fe *fiber.Error
+			if errors.As(err, &fe) {
+				if fe.Code != code {
+					code = fe.Code
+					message = fe.Message
+				}
+			}
+
+			if code == fiber.StatusInternalServerError {
+				fiberLog.Error(err.Error())
+			}
+
+			return c.Status(code).JSON(fiber.Map{"message": message})
+		},
+	})
 
 	app.Use(cors.New(cors.ConfigDefault))
 
@@ -136,9 +177,4 @@ func main() {
 	app.Put("/api/todos/order", UpdateTodosOrder)
 
 	log.Fatal(app.Listen(":" + os.Getenv("SERVER_PORT")))
-}
-
-// RemoveIndex removes the element at index i from a slice while maintaining order.
-func RemoveIndex[T any](s []T, i int) []T {
-	return slices.Delete(s, i, i+1)
 }
